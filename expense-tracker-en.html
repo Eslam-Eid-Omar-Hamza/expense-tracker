@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expense Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f11;
+    --surface: #1a1a1f;
+    --surface2: #222228;
+    --border: #2e2e38;
+    --text: #f0f0f0;
+    --text2: #888;
+    --text3: #555;
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.12);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.12);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245,158,11,0.12);
+    --blue: #3b82f6;
+    --blue-dim: rgba(59,130,246,0.12);
+    --accent: #7c3aed;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2rem; height: 56px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg); position: sticky; top: 0; z-index: 100;
+  }
+  .nav-logo { font-family: var(--mono); font-size: 15px; font-weight: 500; letter-spacing: -0.5px; }
+  .nav-logo span { color: var(--accent); }
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab {
+    padding: 6px 16px; border-radius: 6px; border: none;
+    background: transparent; color: var(--text2);
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 14px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .nav-tab:hover { color: var(--text); background: var(--surface); }
+  .nav-tab.active { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+  .page { display: none; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  .page.active { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem 1.2rem; }
+  .stat-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; font-family: var(--mono); }
+  .stat-value { font-size: 22px; font-weight: 600; font-family: var(--mono); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.amber { color: var(--amber); }
+  .stat-value.blue { color: var(--blue); }
+
+  .section-title { font-size: 12px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; font-family: var(--mono); }
+
+  .cat-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .cat-row { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; }
+  .cat-row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .cat-name { font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .cat-amounts { font-family: var(--mono); font-size: 13px; color: var(--text2); }
+  .cat-amounts .spent { color: var(--text); font-weight: 500; }
+  .bar-track { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+  .bar-fill.ok { background: var(--green); }
+  .bar-fill.warn { background: var(--amber); }
+  .bar-fill.over { background: var(--red); }
+
+  .expense-list { display: flex; flex-direction: column; gap: 8px; }
+  .expense-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; transition: border-color 0.15s;
+  }
+  .expense-row:hover { border-color: var(--accent); }
+  .expense-info { display: flex; flex-direction: column; gap: 2px; }
+  .expense-title { font-size: 14px; font-weight: 500; }
+  .expense-meta { font-size: 12px; color: var(--text2); font-family: var(--mono); }
+  .expense-right { display: flex; align-items: center; gap: 12px; }
+  .expense-amount { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--red); }
+  .expense-amount.income { color: var(--green); }
+  .delete-btn { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px; padding: 4px; border-radius: 4px; transition: color 0.15s; }
+  .delete-btn:hover { color: var(--red); }
+
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; max-width: 560px; }
+  .form-title { font-size: 18px; font-weight: 600; margin-bottom: 24px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; color: var(--text2); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.5px; }
+  input, select, textarea {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 14px;
+    padding: 10px 12px; outline: none; transition: border-color 0.15s; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+  .type-btn { padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text2); font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; cursor: pointer; transition: all 0.15s; }
+  .type-btn.active-expense { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+  .type-btn.active-income  { background: var(--green-dim); color: var(--green); border-color: var(--green); }
+
+  .submit-btn { width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 8px; color: #fff; font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; font-weight: 500; cursor: pointer; margin-top: 8px; transition: opacity 0.15s; }
+  .submit-btn:hover { opacity: 0.88; }
+
+  .advice-hero { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 20px; }
+  .income-input-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .income-input-row input { max-width: 200px; font-family: var(--mono); font-size: 16px; }
+  .rule-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 8px; }
+  .rule-card { border-radius: 12px; padding: 1.2rem; border: 1px solid transparent; }
+  .rule-card.needs { background: var(--green-dim); border-color: rgba(34,197,94,0.25); }
+  .rule-card.wants { background: var(--amber-dim); border-color: rgba(245,158,11,0.25); }
+  .rule-card.save  { background: var(--blue-dim);  border-color: rgba(59,130,246,0.25); }
+  .rule-pct { font-size: 32px; font-weight: 600; font-family: var(--mono); }
+  .rule-pct.needs { color: var(--green); }
+  .rule-pct.wants { color: var(--amber); }
+  .rule-pct.save  { color: var(--blue); }
+  .rule-label { font-size: 13px; font-weight: 500; margin: 4px 0 2px; }
+  .rule-amount { font-size: 12px; color: var(--text2); font-family: var(--mono); }
+  .rule-cats { font-size: 11px; color: var(--text3); margin-top: 6px; line-height: 1.6; }
+
+  .advice-list { display: flex; flex-direction: column; gap: 10px; }
+  .advice-item { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); }
+  .advice-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .advice-text { font-size: 14px; line-height: 1.6; }
+  .advice-text strong { color: var(--text); display: block; margin-bottom: 2px; }
+  .advice-text span { color: var(--text2); }
+
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text2); font-size: 14px; }
+  .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
+
+  .insights-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .insight-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.2rem; }
+  .insight-stat-label { font-size: 11px; color: var(--text2); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .insight-stat-value { font-size: 20px; font-weight: 600; font-family: var(--mono); }
+  .insight-stat-sub { font-size: 12px; color: var(--text2); margin-top: 3px; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1.4rem; margin-bottom: 16px; }
+  .chart-card-title { font-size: 12px; color: var(--text2); font-family: var(--mono); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+  .chart-wrap { position: relative; width: 100%; }
+  .legend-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">exp<span>.</span>track</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('dashboard')">📊 Dashboard</button>
+    <button class="nav-tab" onclick="showPage('add')">➕ Add Expense</button>
+    <button class="nav-tab" onclick="showPage('insights')">📈 Insights</button>
+    <button class="nav-tab" onclick="showPage('advice')">💡 Advice</button>
+  </div>
+</nav>
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Income</div>
+      <div class="stat-value green" id="total-income">$0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Spent</div>
+      <div class="stat-value red" id="total-expense">$0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Remaining</div>
+      <div class="stat-value blue" id="total-left">$0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Transactions</div>
+      <div class="stat-value amber" id="total-count">0</div>
+    </div>
+  </div>
+
+  <div class="section-title">Spending by Category</div>
+  <div class="cat-list" id="cat-list"></div>
+
+  <div class="section-title">Recent Transactions</div>
+  <div class="expense-list" id="expense-list"></div>
+</div>
+
+<!-- ADD EXPENSE -->
+<div class="page" id="page-add">
+  <div class="form-card">
+    <div class="form-title">Add New Transaction</div>
+    <div class="type-toggle">
+      <button class="type-btn active-expense" id="btn-expense" onclick="setType('expense')">🔴 Expense</button>
+      <button class="type-btn" id="btn-income" onclick="setType('income')">🟢 Income</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="f-title" placeholder="e.g. Uber ride" />
+      </div>
+      <div class="form-group">
+        <label>Amount ($)</label>
+        <input type="number" id="f-amount" placeholder="0.00" step="0.01" min="0" />
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="f-category">
+          <option value="Restaurants">🍽️ Restaurants</option>
+          <option value="Transportation">🚗 Transportation</option>
+          <option value="Groceries">🛒 Groceries</option>
+          <option value="Bills">📄 Bills</option>
+          <option value="Housing">🏠 Housing</option>
+          <option value="Entertainment">🎬 Entertainment</option>
+          <option value="Shopping">🛍️ Shopping</option>
+          <option value="Flights">✈️ Flights</option>
+          <option value="Savings">💰 Savings</option>
+          <option value="Debt Payment">💳 Debt Payment</option>
+          <option value="Fees">🧾 Fees</option>
+          <option value="Cash">💵 Cash</option>
+          <option value="Immigration">🛂 Immigration</option>
+          <option value="Family">👨‍👩‍👧 Family</option>
+          <option value="Side Hustle">💼 Side Hustle</option>
+          <option value="Other">📦 Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Payment Method</label>
+        <select id="f-payment">
+          <option value="Card">💳 Card</option>
+          <option value="Cash">💵 Cash</option>
+          <option value="PayPal">🅿️ PayPal</option>
+          <option value="Bank Transfer">🏦 Bank Transfer</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="f-date" />
+      </div>
+      <div class="form-group full">
+        <label>Notes (optional)</label>
+        <textarea id="f-notes" placeholder="Any additional details..."></textarea>
+      </div>
+    </div>
+    <button class="submit-btn" onclick="addEntry()">✓ Add Transaction</button>
+  </div>
+</div>
+
+<!-- INSIGHTS -->
+<div class="page" id="page-insights">
+  <div class="insights-grid">
+    <div class="insight-stat">
+      <div class="insight-stat-label">Best month</div>
+      <div class="insight-stat-value green" id="ins-best-month">—</div>
+      <div class="insight-stat-sub" id="ins-best-sub">No data yet</div>
+    </div>
+    <div class="insight-stat">
+      <div class="insight-stat-label">Highest spend</div>
+      <div class="insight-stat-value red" id="ins-worst-month">—</div>
+      <div class="insight-stat-sub" id="ins-worst-sub">No data yet</div>
+    </div>
+    <div class="insight-stat">
+      <div class="insight-stat-label">Avg / month</div>
+      <div class="insight-stat-value blue" id="ins-avg-month">$0</div>
+      <div class="insight-stat-sub" id="ins-avg-sub">across all months</div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-card-title">Monthly spending trend</div>
+    <div class="chart-wrap" style="height: 200px;">
+      <canvas id="ins-trend-chart" role="img" aria-label="Monthly spending trend line chart">Monthly spending over time.</canvas>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-card-title">Income vs spending by month</div>
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background:#22c55e;"></div>Income</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div>Spending</div>
+    </div>
+    <div class="chart-wrap" id="ins-monthly-wrap" style="height: 200px;">
+      <canvas id="ins-monthly-chart" role="img" aria-label="Income vs spending bar chart">Monthly income and spending comparison.</canvas>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-card-title">Top spending categories</div>
+    <div class="chart-wrap" style="height: 220px;">
+      <canvas id="ins-cat-chart" role="img" aria-label="Spending by category horizontal bar chart">Spending breakdown by category.</canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ADVICE -->
+<div class="page" id="page-advice">
+  <div class="advice-hero">
+    <div class="section-title" style="margin-bottom:8px;">The 50 / 30 / 20 Rule</div>
+    <div class="income-input-row">
+      <span style="font-size:14px; color:var(--text2);">Your monthly income:</span>
+      <input type="number" id="advice-income" placeholder="0" style="max-width:160px;" oninput="updateAdvice()" />
+      <span style="font-size:14px; color:var(--text2);">$</span>
+    </div>
+    <div class="rule-grid">
+      <div class="rule-card needs">
+        <div class="rule-pct needs">50%</div>
+        <div class="rule-label">Needs</div>
+        <div class="rule-amount" id="needs-amount">$0</div>
+        <div class="rule-cats">Housing · Bills · Groceries · Transportation · Debt</div>
+      </div>
+      <div class="rule-card wants">
+        <div class="rule-pct wants">30%</div>
+        <div class="rule-label">Wants</div>
+        <div class="rule-amount" id="wants-amount">$0</div>
+        <div class="rule-cats">Restaurants · Entertainment · Shopping · Flights · Family</div>
+      </div>
+      <div class="rule-card save">
+        <div class="rule-pct save">20%</div>
+        <div class="rule-label">Savings & Debt</div>
+        <div class="rule-amount" id="save-amount">$0</div>
+        <div class="rule-cats">Savings · Investments · Emergency Fund</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Personalized Tips</div>
+  <div class="advice-list" id="advice-list"></div>
+</div>
+
+<script>
+const CATEGORIES = {
+  Restaurants:    { icon: '🍽️', bucket: 'wants', budget: 400 },
+  Transportation: { icon: '🚗', bucket: 'needs', budget: 150 },
+  Groceries:      { icon: '🛒', bucket: 'needs', budget: 700 },
+  Bills:          { icon: '📄', bucket: 'needs', budget: 361 },
+  Housing:        { icon: '🏠', bucket: 'needs', budget: 969 },
+  Entertainment:  { icon: '🎬', bucket: 'wants', budget: 500 },
+  Shopping:       { icon: '🛍️', bucket: 'wants', budget: 200 },
+  Flights:        { icon: '✈️', bucket: 'wants', budget: 0 },
+  Savings:        { icon: '💰', bucket: 'save',  budget: 2500 },
+  'Debt Payment': { icon: '💳', bucket: 'save',  budget: 28 },
+  Fees:           { icon: '🧾', bucket: 'needs', budget: 30 },
+  Cash:           { icon: '💵', bucket: 'wants', budget: 0 },
+  Immigration:    { icon: '🛂', bucket: 'wants', budget: 0 },
+  Family:         { icon: '👨‍👩‍👧', bucket: 'wants', budget: 1229 },
+  'Side Hustle':  { icon: '💼', bucket: 'needs', budget: 0 },
+  Other:          { icon: '📦', bucket: 'wants', budget: 0 },
+};
+
+let entries = JSON.parse(localStorage.getItem('exp_entries_en') || '[]');
+let entryType = 'expense';
+
+function save() { localStorage.setItem('exp_entries_en', JSON.stringify(entries)); }
+function fmt(n) { return '$' + Math.abs(n).toFixed(2); }
+
+const PAGES = ['dashboard','add','insights','advice'];
+let insightCharts = {};
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.nav-tab')[PAGES.indexOf(id)].classList.add('active');
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'insights') renderInsights();
+  if (id === 'advice') renderAdvice();
+}
+
+function getMonthlyData() {
+  const map = {};
+  entries.forEach(e => {
+    const key = e.date.slice(0, 7);
+    if (!map[key]) map[key] = { income: 0, expense: 0 };
+    if (e.type === 'income') map[key].income += e.amount;
+    else map[key].expense += e.amount;
+  });
+  const sorted = Object.keys(map).sort();
+  return { keys: sorted, data: map };
+}
+
+function renderInsights() {
+  Object.values(insightCharts).forEach(c => c.destroy());
+  insightCharts = {};
+
+  const expenses = entries.filter(e => e.type === 'expense');
+  const { keys, data } = getMonthlyData();
+
+  if (!keys.length) {
+    ['ins-best-month','ins-worst-month'].forEach(id => document.getElementById(id).textContent = '—');
+    document.getElementById('ins-avg-month').textContent = '$0';
+    return;
+  }
+
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const label = k => { const [y,m] = k.split('-'); return MONTH_NAMES[parseInt(m)-1] + ' ' + y.slice(2); };
+
+  const expByMonth = keys.map(k => data[k].expense);
+  const incByMonth = keys.map(k => data[k].income);
+  const savings    = keys.map((k,i) => incByMonth[i] - expByMonth[i]);
+
+  const bestIdx  = savings.indexOf(Math.max(...savings));
+  const worstIdx = expByMonth.indexOf(Math.max(...expByMonth));
+  const avgExp   = expByMonth.reduce((a,b)=>a+b,0) / expByMonth.length;
+
+  document.getElementById('ins-best-month').textContent  = label(keys[bestIdx]);
+  document.getElementById('ins-best-sub').textContent    = 'Saved ' + fmt(savings[bestIdx]);
+  document.getElementById('ins-worst-month').textContent = label(keys[worstIdx]);
+  document.getElementById('ins-worst-sub').textContent   = 'Spent ' + fmt(expByMonth[worstIdx]);
+  document.getElementById('ins-avg-month').textContent   = fmt(avgExp);
+  document.getElementById('ins-avg-sub').textContent     = 'across ' + keys.length + ' month' + (keys.length>1?'s':'');
+
+  const labels = keys.map(label);
+
+  insightCharts.trend = new Chart(document.getElementById('ins-trend-chart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: expByMonth,
+        borderColor: '#3b82f6', borderWidth: 2,
+        pointBackgroundColor: '#3b82f6', pointRadius: 4,
+        tension: 0.3, fill: true,
+        backgroundColor: 'rgba(59,130,246,0.08)'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#2e2e38' }, ticks: { color: '#888', font: { size: 11 } } },
+        y: { grid: { color: '#2e2e38' }, ticks: { color: '#888', font: { size: 11 }, callback: v => '$' + v.toFixed(0) } }
+      }
+    }
+  });
+
+  insightCharts.monthly = new Chart(document.getElementById('ins-monthly-chart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Income',   data: incByMonth, backgroundColor: '#22c55e', borderRadius: 4 },
+        { label: 'Spending', data: expByMonth, backgroundColor: '#3b82f6', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#888', font: { size: 11 } } },
+        y: { grid: { color: '#2e2e38' }, ticks: { color: '#888', font: { size: 11 }, callback: v => '$' + v.toFixed(0) } }
+      }
+    }
+  });
+
+  const bycat = {};
+  expenses.forEach(e => { bycat[e.cat] = (bycat[e.cat] || 0) + e.amount; });
+  const topCats = Object.entries(bycat).sort((a,b) => b[1]-a[1]).slice(0,7);
+  const COLORS = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6'];
+
+  const catWrap = document.getElementById('ins-cat-chart').parentElement;
+  catWrap.style.height = Math.max(160, topCats.length * 36 + 40) + 'px';
+
+  insightCharts.cat = new Chart(document.getElementById('ins-cat-chart'), {
+    type: 'bar',
+    data: {
+      labels: topCats.map(([cat]) => { const info = CATEGORIES[cat]; return (info?.icon||'') + ' ' + cat; }),
+      datasets: [{
+        data: topCats.map(([,v]) => v),
+        backgroundColor: topCats.map((_,i) => COLORS[i % COLORS.length]),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#2e2e38' }, ticks: { color: '#888', font: { size: 11 }, callback: v => '$' + v.toFixed(0) } },
+        y: { grid: { display: false }, ticks: { color: '#f0f0f0', font: { size: 12 } } }
+      }
+    }
+  });
+}
+
+function setType(t) {
+  entryType = t;
+  document.getElementById('btn-expense').className = 'type-btn' + (t==='expense' ? ' active-expense' : '');
+  document.getElementById('btn-income').className  = 'type-btn' + (t==='income'  ? ' active-income'  : '');
+  if (t === 'income') document.getElementById('f-category').value = 'Other';
+}
+
+function addEntry() {
+  const title  = document.getElementById('f-title').value.trim();
+  const amount = parseFloat(document.getElementById('f-amount').value);
+  const cat    = document.getElementById('f-category').value;
+  const pay    = document.getElementById('f-payment').value;
+  const date   = document.getElementById('f-date').value;
+  const notes  = document.getElementById('f-notes').value.trim();
+
+  if (!title || isNaN(amount) || amount <= 0) { alert('Please enter a description and amount.'); return; }
+
+  entries.unshift({ id: Date.now(), type: entryType, title, amount, cat, pay, date: date || new Date().toISOString().slice(0,10), notes });
+  save();
+
+  document.getElementById('f-title').value = '';
+  document.getElementById('f-amount').value = '';
+  document.getElementById('f-notes').value = '';
+  showPage('dashboard');
+}
+
+function deleteEntry(id) {
+  entries = entries.filter(e => e.id !== id);
+  save();
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const expenses = entries.filter(e => e.type === 'expense');
+  const incomes  = entries.filter(e => e.type === 'income');
+  const totalExp = expenses.reduce((s,e) => s + e.amount, 0);
+  const totalInc = incomes.reduce((s,e) => s + e.amount, 0);
+  const left = totalInc - totalExp;
+
+  document.getElementById('total-income').textContent  = fmt(totalInc);
+  document.getElementById('total-expense').textContent = fmt(totalExp);
+  document.getElementById('total-left').textContent    = (left >= 0 ? '+' : '-') + fmt(left);
+  document.getElementById('total-left').className      = 'stat-value ' + (left >= 0 ? 'green' : 'red');
+  document.getElementById('total-count').textContent   = entries.length;
+
+  const bycat = {};
+  expenses.forEach(e => { bycat[e.cat] = (bycat[e.cat] || 0) + e.amount; });
+  const maxSpent = Math.max(...Object.values(bycat), 1);
+
+  const catEl = document.getElementById('cat-list');
+  if (!Object.keys(bycat).length) {
+    catEl.innerHTML = '<div class="empty-state"><div class="emoji">📭</div>No expenses yet — add your first one!</div>';
+  } else {
+    catEl.innerHTML = Object.entries(bycat).sort((a,b) => b[1]-a[1]).map(([cat, spent]) => {
+      const info = CATEGORIES[cat] || { icon: '📦', budget: 0 };
+      const budget = info.budget;
+      const pct = budget > 0 ? Math.min((spent/budget)*100, 100) : Math.min((spent/maxSpent)*100, 100);
+      const cls = budget > 0 ? (spent > budget ? 'over' : spent > budget*0.8 ? 'warn' : 'ok') : 'ok';
+      const budgetStr = budget > 0 ? ` / ${fmt(budget)}` : '';
+      return `<div class="cat-row">
+        <div class="cat-row-top">
+          <div class="cat-name"><span>${info.icon}</span>${cat}</div>
+          <div class="cat-amounts"><span class="spent">${fmt(spent)}</span>${budgetStr}</div>
+        </div>
+        <div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  const listEl = document.getElementById('expense-list');
+  if (!entries.length) {
+    listEl.innerHTML = '<div class="empty-state"><div class="emoji">💸</div>Start by adding your first transaction!</div>';
+  } else {
+    listEl.innerHTML = entries.slice(0,15).map(e => {
+      const info = CATEGORIES[e.cat] || { icon: '📦' };
+      return `<div class="expense-row">
+        <div class="expense-info">
+          <div class="expense-title">${info.icon} ${e.title}</div>
+          <div class="expense-meta">${e.cat} · ${e.pay} · ${e.date}${e.notes ? ' · ' + e.notes : ''}</div>
+        </div>
+        <div class="expense-right">
+          <div class="expense-amount ${e.type==='income'?'income':''}">${e.type==='income'?'+':'-'}${fmt(e.amount)}</div>
+          <button class="delete-btn" onclick="deleteEntry(${e.id})" title="Delete">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function updateAdvice() { renderAdvice(); }
+
+function renderAdvice() {
+  const income = parseFloat(document.getElementById('advice-income').value) || 0;
+  document.getElementById('needs-amount').textContent = fmt(income * 0.5);
+  document.getElementById('wants-amount').textContent = fmt(income * 0.3);
+  document.getElementById('save-amount').textContent  = fmt(income * 0.2);
+
+  const expenses = entries.filter(e => e.type === 'expense');
+  const bycat = {};
+  expenses.forEach(e => { bycat[e.cat] = (bycat[e.cat] || 0) + e.amount; });
+
+  const advices = [];
+
+  Object.entries(bycat).forEach(([cat, spent]) => {
+    const info = CATEGORIES[cat] || {};
+    if (info.budget > 0 && spent > info.budget) {
+      const over = spent - info.budget;
+      advices.push({
+        icon: '⚠️',
+        title: `Over budget on ${cat}`,
+        text: `You spent ${fmt(spent)} vs. your ${fmt(info.budget)} budget — that's ${fmt(over)} over. Try to cut back next month.`
+      });
+    }
+  });
+
+  const saved = bycat['Savings'] || 0;
+  if (income > 0 && saved < income * 0.2) {
+    advices.push({
+      icon: '💰',
+      title: 'Your savings are below the ideal',
+      text: `Ideally you should save 20% of your income = ${fmt(income * 0.2)}. You've saved ${fmt(saved)} so far. Try to increase it!`
+    });
+  }
+
+  const foodSpent = bycat['Restaurants'] || 0;
+  if (income > 0 && foodSpent > income * 0.15) {
+    advices.push({
+      icon: '🍽️',
+      title: 'Dining out is eating your budget',
+      text: `You spent ${fmt(foodSpent)} on restaurants — that's ${((foodSpent/income)*100).toFixed(0)}% of your income. Cooking at home more often can save you a lot.`
+    });
+  }
+
+  const transport = bycat['Transportation'] || 0;
+  if (transport > 200) {
+    advices.push({
+      icon: '🚗',
+      title: 'Transportation costs could be lower',
+      text: `You spent ${fmt(transport)} on transport. Try combining trips or using cheaper alternatives when possible.`
+    });
+  }
+
+  if (!advices.length) {
+    advices.push({ icon: '🎉', title: 'Great job! Your spending looks healthy.', text: 'No budget warnings right now. Keep it up and try to grow your savings each month.' });
+  }
+
+  advices.push({ icon: '📌', title: 'Remember the 50/30/20 rule', text: '50% for needs (rent + food + bills) · 30% for wants (dining + entertainment) · 20% for savings and debt.' });
+  advices.push({ icon: '📅', title: 'Review your spending weekly', text: 'A weekly check-in keeps you aware of your habits and helps prevent overspending before it piles up.' });
+  advices.push({ icon: '🚨', title: 'Build an emergency fund first', text: 'Before investing, make sure you have 3–6 months of expenses saved. This is your financial safety net.' });
+
+  document.getElementById('advice-list').innerHTML = advices.map(a =>
+    `<div class="advice-item">
+      <div class="advice-icon">${a.icon}</div>
+      <div class="advice-text"><strong>${a.title}</strong><span>${a.text}</span></div>
+    </div>`
+  ).join('');
+}
+
+document.getElementById('f-date').valueAsDate = new Date();
+renderDashboard();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+</body>
+</html>
